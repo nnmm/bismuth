@@ -49,14 +49,14 @@ impl Drawable for InkDrop {
     }
 
     fn draw(&mut self, canvas : &mut RgbaImage) {
-        println!("Boundary before: {}", self.boundary.len());
-        let l = (50.0*self.t) as u8 % 255;
+        // println!("Boundary before: {}", self.boundary.len());
+        let col = hsv_to_rgb((self.t%50.0)/50.0, 1.0, /*1.0 - */(self.t % 5.0)/5.0);
         // randomly fill some of the boundary pixels
         let (w, h) = (self.width, self.height);
         for &(x, y) in &self.boundary.clone() {
             if rand::random() {
                 self.filled.insert((x, y));
-                canvas.put_pixel(x, y, im::Rgba([l, l/2, 0, 255]));
+                canvas.put_pixel(x, y, col);
                 self.boundary.extend(InkDrop::new_neighbors(x, y, w, h));
             }
         }
