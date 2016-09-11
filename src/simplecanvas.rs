@@ -5,19 +5,27 @@ use self::im::ConvertBuffer;
 use self::piston_window::*;
 use std::vec::Vec;
 
-pub struct SimpleCanvas {
-    window : PistonWindow,
-    width : u32,
-    height : u32,
-    imbuf : im::ImageBuffer<im::Rgba<u8>, Vec<u8>>,
-    texture : G2dTexture<'static>,
-    drawables : Vec<Box<Drawable>>
+pub type RgbaImage = im::ImageBuffer<im::Rgba<u8>, Vec<u8>>;
+pub type Color = im::Rgba<u8>;
+
+pub struct SimpleCanvas<'closure> {
+    window: PistonWindow,
+    width: u32,
+    height: u32,
+    t: u32,
+    imbuf: RgbaImage,
+    texture: G2dTexture<'static>,
+    drawables: Vec<Box<Drawable>>,
+    init_cb: Box<Fn(u32, u32) -> Vec<Box<Drawable>> + 'closure>,
+    frame_cb: Box<Fn(u32, u32, u32) -> Vec<Box<Drawable>> + 'closure>
 }
 
-pub type RgbaImage = im::ImageBuffer<im::Rgba<u8>, Vec<u8>>;
 
-impl SimpleCanvas {
-    pub fn new(windowname : &str) -> SimpleCanvas {
+impl<'closure> SimpleCanvas<'closure> {
+    pub fn new(windowname: &str,
+               init_cb: &'closure Fn(u32, u32) -> Vec<Box<Drawable>>,
+               frame_cb: &'closure Fn(u32, u32, u32) -> Vec<Box<Drawable>>) -> SimpleCanvas<'closure> {
+
         let (width, height) = (800, 800);
         let mut window: PistonWindow =
             WindowSettings::new(windowname, (width, height))
@@ -37,19 +45,26 @@ impl SimpleCanvas {
         SimpleCanvas {
             window: window,
             width: width,
+            t: 0,
             height: height,
             imbuf: buf,
             texture: texture,
-            drawables: Vec::new()
+            drawables: init_cb(width, height),
+            init_cb: Box::new(init_cb),
+            frame_cb: Box::new(frame_cb)
         }
     }
 
-    pub fn add(&mut self, thing : Box<Drawable>) {
+    pub fn add(&mut self, thing: Box<Drawable>) {
         self.drawables.push(thing);
     }
 
-    fn update(&mut self, steps : u32) {
+    fn update(&mut self, steps: u32) {
         // call draw() on each drawable, remove if not alive
+        self.t = self.t + 1;
+        self.drawables.retain(|dr| dr.alive());
+        let added = (self.frame_cb)(self.width, self.height, self.t);
+        self.drawables.extend(added);
         for ref mut dr in self.drawables.iter_mut() {
             for _ in 0..steps {
                 dr.draw(&mut self.imbuf);
@@ -57,10 +72,11 @@ impl SimpleCanvas {
         }
     }
 
-    fn reset(&mut self, width : u32, height : u32) {
+    fn reset(&mut self, width: u32, height: u32) {
         // println!("Window resized to ({}, {}).", width, height);
         self.width = width;
         self.height = height;
+        self.t = 0;
         // create new texture
         self.imbuf = im::ImageBuffer::from_pixel(width, height, im::Rgba([0, 0, 0, 0]));
         self.texture = Texture::from_image(
@@ -68,9 +84,7 @@ impl SimpleCanvas {
             &self.imbuf.convert(),
             &TextureSettings::new() ).unwrap();
         // call reset() on each drawable
-        for ref mut dr in self.drawables.iter_mut() {
-            dr.reset(width, height);
-        }
+        self.drawables = (self.init_cb)(width, height);
     }
 
     pub fn run(&mut self) {
@@ -78,7 +92,7 @@ impl SimpleCanvas {
             if let Event::Render(rargs) = e {
                 // resized?
                 if self.width == rargs.width && self.height == rargs.height {
-                    self.update(2);
+                    self.update(1);
                     self.texture.update(&mut self.window.encoder, &self.imbuf).unwrap();
                 } else {
                     self.reset(rargs.width, rargs.height);
@@ -91,16 +105,19 @@ impl SimpleCanvas {
             }
         }
     }
+
+    pub fn dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
 }
 
 
 pub trait Drawable {
-    fn reset(&mut self, u32, u32);
     fn draw(&mut self, &mut RgbaImage);
     fn alive(&self) -> bool;
 }
 
-pub fn hsv_to_rgb(h : f64, s : f64, v : f64) -> im::Rgba<u8> {
+pub fn hsv_to_rgb(h: f64, s: f64, v: f64) -> im::Rgba<u8> {
     let c = v*s;
     let hprime = h*6.0;
     let x = c*(1.0 - (hprime % 2.0 - 1.0).abs());

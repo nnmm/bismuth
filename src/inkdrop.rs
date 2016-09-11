@@ -7,25 +7,27 @@ use std::vec::Vec;
 use super::simplecanvas::*;
 
 pub struct InkDrop {
-    boundary : HashSet<(u32, u32)>,
-    filled : HashSet<(u32, u32)>,
-    width : u32,
-    height : u32,
-    t : f64
+    boundary: HashSet<(u32, u32)>,
+    filled: HashSet<(u32, u32)>,
+    colorize: Box<Fn(f64) -> Color>,
+    cycles: u32,
+    t: f64
 }
 
+
 impl InkDrop {
-    pub fn new(width : u32, height : u32) -> InkDrop {
+    pub fn new(start: HashSet<(u32, u32)>, colorize: Box<Fn(f64) -> Color>, cycles: u32) -> InkDrop {
+        let boundary = start.clone();
         InkDrop {
-            boundary: [(width/2, height/2)].iter().cloned().collect(),
+            boundary: start,
             filled: HashSet::new(),
-            width: width,
-            height: height,
+            colorize: colorize,
+            cycles: cycles,
             t: 1.0
         }
     }
 
-    fn new_neighbors(x : u32, y : u32, w : u32, h : u32) -> Vec<(u32, u32)> {
+    fn new_neighbors(x: u32, y: u32, w: u32, h: u32) -> Vec<(u32, u32)> {
         let mut v = Vec::new();
         if x > 0 {
             v.push((x-1, y));
@@ -44,15 +46,14 @@ impl InkDrop {
 }
 
 impl Drawable for InkDrop {
-    fn reset(&mut self, width : u32, height : u32) {
-        *self = InkDrop::new(width, height);
-    }
-
-    fn draw(&mut self, canvas : &mut RgbaImage) {
+    fn draw(&mut self, canvas: &mut RgbaImage) {
         // println!("Boundary before: {}", self.boundary.len());
-        let col = hsv_to_rgb((self.t%50.0)/50.0, 1.0, /*1.0 - */(self.t % 5.0)/5.0);
+
+        let col = (self.colorize)(self.t);
+        // let col = hsv_to_rgb(hue, 1.0, 1.0 - value);
+        // let col = hsv_to_rgb(hue, value, 1.0);
         // randomly fill some of the boundary pixels
-        let (w, h) = (self.width, self.height);
+        let (w, h) = (canvas.width(), canvas.height());
         for &(x, y) in &self.boundary.clone() {
             if rand::random() {
                 self.filled.insert((x, y));
@@ -67,7 +68,8 @@ impl Drawable for InkDrop {
     }
 
     fn alive(&self) -> bool {
-        self.boundary.len() > 0
+        //let cycles = (self.t + 1.0/self.t)/self.value_speed;
+        self.boundary.len() > 0// && (cycles as u32) < self.cycles
     }
 }
 

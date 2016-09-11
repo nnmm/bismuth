@@ -3,8 +3,6 @@ use super::simplecanvas::*;
 pub struct HsvTest;
 
 impl Drawable for HsvTest {
-    fn reset(&mut self, _ : u32, _ : u32) {}
-
     fn draw(&mut self, canvas : &mut RgbaImage) {
         for x in 0..canvas.width() {
             for y in 0..canvas.height() {
