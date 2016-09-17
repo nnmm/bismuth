@@ -1,8 +1,8 @@
 extern crate bismuth;
 extern crate image as im;
 
-use std::collections::HashSet;
-use bismuth::inkdrop::*;
+// use std::collections::HashSet;
+use bismuth::inkmap::*;
 use bismuth::simplecanvas::*;
 // use bismuth::hsvtest::*;
 
@@ -24,8 +24,8 @@ fn init(width: u32, height: u32) -> Vec<Box<Drawable>> {
         hsv_to_rgb(1.0 - hue, value, 1.0)
     });
     let mut result : Vec<Box<Drawable>> = Vec::new();
-    let start_set = [(width/2, height/2)].iter().cloned().collect();
-    let item = InkDrop::new(start_set, cb, 300);
+    let start_set = [((width/2, height/2), true)].iter().cloned().collect();
+    let item = InkMap::new(start_set, cb, 300);
     // let item = HsvTest;
     result.push(Box::new(item));
 
@@ -39,14 +39,14 @@ fn init(width: u32, height: u32) -> Vec<Box<Drawable>> {
     let start_set7 : HashSet<(u32, u32)> = start_set5.union(&start_set6).cloned().collect();
     let start_set8 : HashSet<(u32, u32)> = (0..height).map(|i| (0, i)).collect();
     let start_set9 : HashSet<(u32, u32)> = start_set7.union(&start_set8).cloned().collect();
-    let item2 = InkDrop::new(width, height, start_set9, 50.0, 5.0, 100);
+    let item2 = InkDrop::new(start_set9, ..., 100);
     result.push(Box::new(item2));*/
 
     result
 }
 
-fn run(width: u32, height: u32, t: u32) -> Vec<Box<Drawable>> {
-    let mut result : Vec<Box<Drawable>> = Vec::new();
+fn run(_: u32, _: u32, _: u32) -> Vec<Box<Drawable>> {
+    let result : Vec<Box<Drawable>> = Vec::new();
     result
 }
 

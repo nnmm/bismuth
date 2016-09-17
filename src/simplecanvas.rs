@@ -2,10 +2,10 @@ extern crate piston_window;
 extern crate image as im;
 
 use self::im::ConvertBuffer;
+pub use self::im::RgbaImage;
 use self::piston_window::*;
 use std::vec::Vec;
 
-pub type RgbaImage = im::ImageBuffer<im::Rgba<u8>, Vec<u8>>;
 pub type Color = im::Rgba<u8>;
 
 pub struct SimpleCanvas<'closure> {

@@ -2,24 +2,23 @@ extern crate piston_window;
 extern crate image as im;
 extern crate rand;
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::vec::Vec;
 use super::simplecanvas::*;
 
-pub struct InkDrop {
-    boundary: HashSet<(u32, u32)>,
-    filled: HashSet<(u32, u32)>,
+pub struct InkMap {
+    boundary: HashMap<(u32, u32), bool>,
     colorize: Box<Fn(f64) -> Color>,
     cycles: u32,
     t: f64
 }
 
 
-impl InkDrop {
-    pub fn new(start: HashSet<(u32, u32)>, colorize: Box<Fn(f64) -> Color>, cycles: u32) -> InkDrop {
-        InkDrop {
+impl InkMap {
+    pub fn new(start: HashMap<(u32, u32), bool>, colorize: Box<Fn(f64) -> Color>, cycles: u32) -> InkMap {
+        InkMap {
             boundary: start,
-            filled: HashSet::new(),
             colorize: colorize,
             cycles: cycles,
             t: 1.0
@@ -44,7 +43,7 @@ impl InkDrop {
     }
 }
 
-impl Drawable for InkDrop {
+impl Drawable for InkMap {
     fn draw(&mut self, canvas: &mut RgbaImage) {
         // println!("Boundary before: {}", self.boundary.len());
 
@@ -53,15 +52,26 @@ impl Drawable for InkDrop {
         // let col = hsv_to_rgb(hue, value, 1.0);
         // randomly fill some of the boundary pixels
         let (w, h) = (canvas.width(), canvas.height());
-        for &(x, y) in &self.boundary.clone() {
-            if rand::random() {
-                self.filled.insert((x, y));
+        for (&(x, y), &active) in &self.boundary.clone() {
+            if active && rand::random() {
+                // disable pixel
+                self.boundary.insert((x, y), false);
                 canvas.put_pixel(x, y, col);
-                self.boundary.extend(InkDrop::new_neighbors(x, y, w, h));
+                if x > 0 {
+                    self.boundary.entry((x-1, y)).or_insert(true);
+                }
+                if x < w-1 {
+                    self.boundary.entry((x+1, y)).or_insert(true);
+                }
+                if y > 0 {
+                    self.boundary.entry((x, y-1)).or_insert(true);
+                }
+                if y < h-1 {
+                    self.boundary.entry((x, y+1)).or_insert(true);
+                }
+                // self.boundary.extend(InkMap::new_neighbors(x, y, w, h));
             }
         }
-        // remove those from boundary
-        self.boundary = self.boundary.difference(&self.filled).cloned().collect();
 
         self.t += 1.0/self.t;
     }
